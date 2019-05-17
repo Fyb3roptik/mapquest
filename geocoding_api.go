@@ -36,6 +36,21 @@ func (api *GeocodingAPI) Address(req *GeocodingAddressRequest) (*GeocodingAddres
 	return res, nil
 }
 
+// Reverse returns address information from latitude/longitude coordinates
+func (api *GeocodingAPI) Reverse(req *GeocodingAddressRequest) (*GeocodingAddressResponse, error) {
+	u, err := api.buildReverseURL(req)
+	if err != nil {
+		return nil, err
+	}
+
+	res := new(GeocodingAddressResponse)
+	if err := api.c.getJSON(u, res); err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
 // buildAddressURL returns the complete URL for the request,
 // including the key to query the MapQuest API.
 func (api *GeocodingAPI) buildAddressURL(req *GeocodingAddressRequest) (string, error) {
@@ -59,6 +74,22 @@ func (api *GeocodingAPI) buildAddressURL(req *GeocodingAddressRequest) (string, 
 	// Key has to be handled specifically here, because
 	// the MapQuest API seems to not like the key URL-encoded
 	u.RawQuery = fmt.Sprintf("key=%s&%s", api.c.key, q.Encode())
+	return u.String(), nil
+}
+
+// buildReverseURL returns the complete URL for the request,
+// including the key to query the MapQuest API.
+func (api *GeocodingAPI) buildReverseURL(req *GeocodingAddressRequest) (string, error) {
+	urls := fmt.Sprintf("%s%s/reverse", api.c.BaseURL(), GeocodingPathPrefix)
+	u, err := url.Parse(urls)
+	if err != nil {
+		return "", err
+	}
+
+	// Key has to be handled specifically here, because
+	// the MapQuest API seems to not like the key URL-encoded
+	u.RawQuery = fmt.Sprintf("key=%s&location=%f,%f", api.c.key, req.Location.LatLng.Lat, req.Location.LatLng.Lng)
+	log.Println("DEBUG: ", u.String())
 	return u.String(), nil
 }
 
@@ -102,7 +133,7 @@ type GeocodingAddressResponseLocation struct {
 		Latitude  float64 `json:"lat,omitempty"`
 		Longitude float64 `json:"lng,omitempty"`
 	} `json:"latLng,omitempty"`
-	LinkId       int    `json:"linkId,omitempty"`
+	LinkId       string    `json:"linkId,omitempty"`
 	MapUrl       string `json:"mapUrl,omitempty"`
 	PostalCode   string `json:"postalCode,omitempty"`
 	SideOfStreet string `json:"sideOfStreet,omitempty"`
@@ -111,13 +142,18 @@ type GeocodingAddressResponseLocation struct {
 }
 
 type GeocodingLocation struct {
-	LatLng     string `json:"latLng,omitempty"`
-	Street     string `json:"street,omitempty"`
-	City       string `json:"city,omitempty"`
-	County     string `json:"county,omitempty"`
-	State      string `json:"state,omitempty"`
-	Country    string `json:"country,omitempty"`
-	PostalCode string `json:"postalCode,omitempty"`
-	Type       string `json:"type,omitempty"`
-	DragPoint  *bool  `json:"dragPoint,omitempty"`
+	LatLng 		 *LatLng	`json:"latLng,omitempty"`
+	Street     string 	`json:"street,omitempty"`
+	City       string 	`json:"city,omitempty"`
+	County     string 	`json:"county,omitempty"`
+	State      string 	`json:"state,omitempty"`
+	Country    string 	`json:"country,omitempty"`
+	PostalCode string 	`json:"postalCode,omitempty"`
+	Type       string 	`json:"type,omitempty"`
+	DragPoint  *bool  	`json:"dragPoint,omitempty"`
+}
+
+type LatLng struct {
+	Lat			float32			`json:"lat"`
+	Lng			float32			`json:"lng"`
 }
